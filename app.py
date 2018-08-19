@@ -27,6 +27,7 @@ define("port", default="8000", help="Server port", type=int)
 class RedirectHandler(RequestHandler):
     async def get(self, short):
         db = self.settings['db']
+        short_collection = db.short_urls
         url_info = await short_collection.find_one({'short': short})
 
         if url_info is None:

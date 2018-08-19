@@ -1,1 +1,1 @@
-web: python app.py --port=$PORT --host=lets.bndr.it
+web: python app.py --port=$PORT --domain=bndr.it
