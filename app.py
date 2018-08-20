@@ -5,6 +5,7 @@ import random
 import logging
 from datetime import datetime
 from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 import motor
 
@@ -59,15 +60,27 @@ class CreateAPIHandler(RequestHandler):
         short_collection = db.short_urls
 
         prefix = self.get_argument('prefix', None)
-        if prefix is None:
-            raise HTTPError(422)
-        if prefix not in self.settings['prefixes']:
-            raise HTTPError(422)
+        #if prefix is None:
+        #    raise HTTPError(422)
+        #if prefix not in self.settings['prefixes']:
+        #    raise HTTPError(422)
+        # support only mybinder.org for the moment
+        prefix = 'mybinder'
 
         uri = self.get_argument('uri', None)
         if uri is None:
             raise HTTPError(422)
+        # check if they submitted a full URL or just a URI
+        parsed = urlparse(uri)
+        if parsed.netloc:
+            # full URL
+            uri = parsed.path
+
         uri = normalise_uri(uri)
+
+        # doesn't look right
+        if not uri.startswith("/v2/"):
+            raise HTTPError(500)
 
         url_key = (prefix, uri)
         url_info = await short_collection.find_one({'prefix': prefix,
@@ -118,7 +131,7 @@ class Application(tornado.web.Application):
         ]
 
         mongodb_url = os.getenv("MONGODB_URL")
-        db = motor.motor_tornado.MotorClient(mongodb_url).bndrit
+        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrit']
 
         settings = dict(
             domain=options.domain,
