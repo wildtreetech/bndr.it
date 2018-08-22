@@ -23,20 +23,25 @@
               name="uri"
               aria-describedby="binderUrlHelp"
               placeholder="https://mybinder.org/v2/gh/<org>/<repo>"
-              required>
+              required
+              readonly>
             <div class="invalid-feedback">
               You have to enter a valid URL.
             </div>
             <small id="binderUrlHelp" class="form-text text-muted">The link to launch your Binder.</small>
           </div>
-          <button type="submit" class="btn btn-primary">Create short link</button>
         </form>
+        <p class="d-flex mt-4 mt-md-5 align-items-baseline flex-wrap">
+          <a class="h4 mr-sm-2 text-primary" href="https://bndr.it/yay84">https://bndr.it/yay84</a>
+          <button type="button" class="btn btn-light btn-sm d-flex align-items-center"><img src="{{ static_url("clippy.svg") }}"></button>
+        </p>
         <p class="mt-4 mt-md-5">Create beautiful short links for your Binder. Enter the full launch URL for your Binder and get a short link like: <span class="text-monospace">https://bndr.it/xxxx</span> that you can easily share with anyone.
         </p>
         <p>
           Currently only links to <a href="https://mybinder.org">mybinder.org</a> are accepted.
         </p>
-        <p class="mt-5 mt-md-5 text-muted">
+        <a class="btn btn-primary mt-4 mt-md-4" href="/">Create another short link</a>
+        <p class="mt-5 text-muted">
           This service is operated by <a href="//www.wildtreetech.com">Wild Tree Tech</a>.
         </p>
       </div>
