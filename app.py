@@ -121,11 +121,17 @@ class MainHandler(RequestHandler):
         self.render('index.html')
 
 
+class AfterHandler(RequestHandler):
+    def get(self):
+        self.render('after.html')
+
+
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/api/shorten/?', CreateAPIHandler),
             (r'/api/list/?', ListAPIHandler),
+            (r'/after', AfterHandler),
             (r'/([a-zA-Z0-9]+)/?$', RedirectHandler),
             (r'/', MainHandler),
         ]
@@ -151,7 +157,8 @@ class Application(tornado.web.Application):
 def main():
     tornado.options.parse_command_line()
     logging.getLogger().setLevel(logging.DEBUG)
-    http_server = tornado.httpserver.HTTPServer(Application())
+    http_server = tornado.httpserver.HTTPServer(Application(),
+                                                xheaders=True)
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
 
