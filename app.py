@@ -15,7 +15,7 @@ import tornado.httpserver
 import tornado.ioloop
 import tornado.options
 import tornado.web
-from tornado.web import RequestHandler, HTTPError
+from tornado.web import RequestHandler, HTTPError, StaticFileHandler
 from tornado.options import define, options
 
 from utils import IntEncoder, normalise_uri
@@ -131,18 +131,17 @@ class Application(tornado.web.Application):
         handlers = [
             (r'/api/shorten/?', CreateAPIHandler),
             (r'/api/list/?', ListAPIHandler),
-            (r'/after', AfterHandler),
             (r'/([a-zA-Z0-9]+)/?$', RedirectHandler),
-            (r'/', MainHandler),
+            (r'/(.*)', StaticFileHandler, {'default_filename': 'index.html',
+                                           'path': 'static'})
         ]
 
         mongodb_url = os.getenv("MONGODB_URL")
-        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrit']
+        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrittest']
 
         settings = dict(
             domain=options.domain,
             template_path=os.path.join(os.path.dirname(__file__), "build"),
-            static_path=os.path.join(os.path.dirname(__file__), "static"),
             db=db,
             prefixes={'mybinder': ['https://mybinder.org/'],
                       'gesis': ['https://notebooks.gesis.org/binder/'],
