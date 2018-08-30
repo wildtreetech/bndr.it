@@ -1,9 +1,31 @@
+import json
+import datetime
+import ipaddress
+
 from w3lib.url import canonicalize_url
 
 
 def normalise_uri(uri):
     uri = uri.replace("//", "/")
     return canonicalize_url(uri, keep_fragments=True)
+
+
+def anonymise_ip(ip):
+    """Zero out the last bits of an IP address"""
+    ip = ipaddress.ip_address(ip)
+    if ip.version == 4:
+        shift = 8
+    else:
+        shift = 80
+    ip = int(ip) >> shift << shift
+    return str(ipaddress.ip_address(ip))
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 DEFAULT_ALPHABET = 'mn6j2c4rv8bpygw95z7hsdaetxuk3fq'
