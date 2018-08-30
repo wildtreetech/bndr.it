@@ -4,7 +4,7 @@ import os
 import json
 import random
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
@@ -27,8 +27,10 @@ from utils import IntEncoder, normalise_uri, JSONEncoder, anonymise_ip
 # Add our own encoder to the JSON module, handles datetime objects for us
 json._default_encoder = JSONEncoder()
 
+UTC = timezone(timedelta(0))
 
-define("domain", type=str, default="bndr.it", help="Domain for short URLs")
+define("domain", type=str, default="https://bndr.it",
+       help="Domain for short URLs")
 define("port", default="8000", help="Server port", type=int)
 
 
@@ -51,14 +53,16 @@ class RedirectHandler(RequestHandler):
         else:
             prefix = random.choice(url_info['prefixes'])
             uri = url_info['uri']
-            app_log.error('redirect to: %s', urljoin(prefix, uri))
+            if uri.startswith('/'):
+                uri = uri[1:]
+            app_log.error('redirect to: %s ', urljoin(prefix, uri))
             self.redirect(urljoin(prefix, uri))
             status = 200
 
         event = {'ip': anonymise_ip(self.request.remote_ip),
                  'user-agent': self.request.headers['user-agent'],
                  'referer': self.request.headers.get('referer', ''),
-                 'datetime': datetime.now(),
+                 'datetime': datetime.now(UTC),
                  'prefix': prefix,
                  'uri': uri,
                  'short': short,
@@ -179,20 +183,21 @@ class ShortenAPIHandler(BaseAPIHandler):
                 'prefixes': self.settings['prefixes'][prefix],
                 'prefix': prefix,
                 'uri': uri,
-                'created': datetime.now(),
+                'created': datetime.now(UTC),
                 'short': short,
                 }
             await short_collection.insert_one(url_info)
 
         data = {
-            'short_url': "https://{}/{}".format(self.settings['domain'],
-                                                short),
+            'short_url': "{}/{}".format(self.settings['domain'],
+                                        short),
             'short': short
             }
         if json_request:
             self.finish({'status_code': 200, 'status_txt': 'OK', 'data': data})
         else:
-            self.redirect('//localhost:3000/b/{}'.format(short))
+            self.redirect('{}/b/{}'.format(self.settings['domain'],
+                                           short))
 
 
 class Application(tornado.web.Application):
@@ -207,7 +212,8 @@ class Application(tornado.web.Application):
         ]
 
         mongodb_url = os.getenv("MONGODB_URL")
-        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrit']
+        _, mongodb_name = mongodb_url.rsplit('/', maxsplit=1)
+        db = motor.motor_tornado.MotorClient(mongodb_url)[mongodb_name]
 
         settings = dict(
             domain=options.domain,

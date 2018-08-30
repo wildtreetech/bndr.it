@@ -2,6 +2,8 @@ import React from 'react'
 
 import {CopyToClipboard} from 'react-copy-to-clipboard';
 
+import moment from 'moment';
+
 import fetch from 'isomorphic-unfetch';
 
 import {withRouter} from 'next/router';
@@ -9,17 +11,27 @@ import Link from 'next/link';
 import Head from 'next/head';
 import Layout from "../components/layout";
 
-const BACKEND = "https://bndr.it"
+import env from '../lib/env';
+const { BACKEND } = env;
+
 
 const ShortUrl = (props) => (
   props.shortUrl.length > 0 ?
     <p className="d-flex mt-4 mt-md-5 align-items-baseline flex-wrap">
       <a
-       className="h4 mr-sm-2 text-primary"
+       className="h4 mr-sm-2"
        href={props.shortUrl}
        >
        {props.shortUrl}
       </a>
+      <style jsx>{`
+        a {
+          color: #579ACA;
+        }
+        a:hover {
+          color: #337ab7;
+        }
+      `}</style>
       <CopyToClipboard text={props.shortUrl}>
           <button
            type="button"
@@ -41,8 +53,9 @@ class Page extends React.Component {
 
   render () {
     const bndr = this.props.router.query.bndr;
-    const createdOn = new Date(this.props.created);
+    const createdOn = moment.parseZone(this.props.created);
     return (
+      <div>
       <Layout>
         <Head>
           <title key='title'>Bndr.it - Information for {`https://bndr.it/${bndr}`}</title>
@@ -51,12 +64,22 @@ class Page extends React.Component {
         <ShortUrl shortUrl={`https://bndr.it/${bndr}`} />
         <ul>
           <li>Total clicks: {this.props.count}.</li>
-          <li>Created on {createdOn.toString()}.</li>
+          <li>Created {createdOn.fromNow()}.</li>
         </ul>
-        <p>
-          Create a new <Link href="/" prefetch>Binder short URL</Link>.
+        <p className="mt-4 mt-md-5">
+          Create a new <Link href="/" prefetch><a>Binder short link</a></Link>
+          {' '}for your favourite Binder.
         </p>
      </Layout>
+     <style jsx>{`
+       a {
+         color: #337ab7;
+       }
+       a:hover {
+         color: #23527c;
+       }
+     `}</style>
+     </div>
    )
   }
 }
