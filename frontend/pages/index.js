@@ -8,7 +8,8 @@ import Link from "next/link";
 import { withRouter } from 'next/router';
 import Layout from "../components/layout";
 
-const BACKEND = "https://bndr.it"
+import env from '../lib/env';
+const { BACKEND } = env;
 
 
 class Home extends React.Component {
@@ -42,11 +43,10 @@ class Home extends React.Component {
     catch (err) {
       userUrl = event.target.value;
     }
-    //console.log('user URL', userUrl, event.target.value)
 
     // we have attempted to validate this
     // XXX debounce me?
-    this.setState({validated: event.target.value.length > 0});
+    this.setState({validated: event.target.value.length > 10});
     var invalid = true;
     var prefix = '';
     for (var prefixName in this.state.prefixes) {
@@ -104,6 +104,7 @@ class Home extends React.Component {
 
   render() {
     return (
+      <div>
       <Layout>
 
         <h1>Binder Short Links</h1>
@@ -136,7 +137,7 @@ class Home extends React.Component {
             {
               this.state.serverSide ?
               "This does not appear to be a valid Binder URL." :
-              `${this.state.binderUrl} does not appear to be a valid Binder URL.`
+              `${this.state.binderUrl} does not appear to be a complete Binder URL.`
             }
             </div>
           </div>
@@ -151,20 +152,50 @@ class Home extends React.Component {
           </button>
         </form>
         <p className="mt-4 mt-md-5">
-          Create beautiful short links for your Binder. Enter the full
+          Create beautiful short links for your Binder.
+        </p>
+        <p>
+          Enter the full
           launch URL for your Binder and get a short link like:{" "}
           <span className="text-monospace">https://bndr.it/25t52</span> that
           you can easily share with others.
         </p>
         <p>
-          Currently only links to{" "}
-          <a href="https://mybinder.org">mybinder.org</a> are accepted.
+          You can see the statistics for a short link by prefixing
+          (<span className="text-monospace">/b/</span>) to the
+          short code (<span className="text-monospace">25t52</span>),
+          to make:{' '}
+          <span className="text-monospace">https://bndr.it/b/25t52</span>.
         </p>
         <p>
-          This service is operated by{" "}
-          <a href="https://www.wildtreetech.com">Wild Tree Tech</a>.
+          Currently only links to{" "}
+          <a href="https://mybinder.org">mybinder.org</a> and{' '}
+          <a href="https://notebooks.gesis.org/binder/">GESIS</a> are accepted.
+        </p>
+        <p>
+          <small className="text-muted">
+            This service is operated by{" "}
+            <a href="https://www.wildtreetech.com">Wild Tree Tech</a>.
+          </small>
         </p>
       </Layout>
+      <style jsx>{`
+        .btn-primary {
+          background-color: #579ACA;
+          border-color: #579ACA;
+        }
+        .btn-primary:hover {
+          background-color: #337ab7;
+          border-color: #337ab7;
+        }
+        a {
+          color: #337ab7;
+        }
+        a:hover {
+          color: #23527c;
+        }
+      `}</style>
+      </div>
     );
   }
 }

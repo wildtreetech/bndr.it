@@ -7,7 +7,7 @@ const defaultDescription = ''
 const Head = props => (
   <NextHead>
     <meta charSet="UTF-8" />
-    <title key='title'>{props.title || 'Bndr.it - short URLs for Binders'}</title>
+    <title key='title'>{props.title || 'Bndr.it - Binder links for humans'}</title>
     <meta
       name="description"
       content={props.description || defaultDescription}
@@ -18,7 +18,7 @@ const Head = props => (
       rel="stylesheet"
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
       integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-      crossorigin="anonymous"
+      crossOrigin="anonymous"
     />
   </NextHead>
 )
