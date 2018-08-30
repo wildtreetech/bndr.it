@@ -207,7 +207,7 @@ class Application(tornado.web.Application):
         ]
 
         mongodb_url = os.getenv("MONGODB_URL")
-        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrittest']
+        db = motor.motor_tornado.MotorClient(mongodb_url)['bndrit']
 
         settings = dict(
             domain=options.domain,

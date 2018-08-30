@@ -8,7 +8,7 @@ import Link from "next/link";
 import { withRouter } from 'next/router';
 import Layout from "../components/layout";
 
-const BACKEND = "http://localhost:8000"
+const BACKEND = "https://bndr.it"
 
 
 class Home extends React.Component {

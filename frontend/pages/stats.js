@@ -9,7 +9,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import Layout from "../components/layout";
 
-const BACKEND = "http://localhost:8000"
+const BACKEND = "https://bndr.it"
 
 const ShortUrl = (props) => (
   props.shortUrl.length > 0 ?
