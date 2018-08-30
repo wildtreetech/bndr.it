@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import json
 import random
 import logging
 from datetime import datetime
@@ -8,8 +9,10 @@ from urllib.parse import urljoin
 from urllib.parse import urlparse
 
 import motor
+from motor.motor_tornado import MotorCollection
 
 from pymongo import ReturnDocument
+from pymongo.write_concern import WriteConcern
 
 import tornado.httpserver
 import tornado.ioloop
@@ -17,8 +20,12 @@ import tornado.options
 import tornado.web
 from tornado.web import RequestHandler, HTTPError, StaticFileHandler
 from tornado.options import define, options
+from tornado.log import app_log
 
-from utils import IntEncoder, normalise_uri
+from utils import IntEncoder, normalise_uri, JSONEncoder, anonymise_ip
+
+# Add our own encoder to the JSON module, handles datetime objects for us
+json._default_encoder = JSONEncoder()
 
 
 define("domain", type=str, default="bndr.it", help="Domain for short URLs")
@@ -28,17 +35,83 @@ define("port", default="8000", help="Server port", type=int)
 class RedirectHandler(RequestHandler):
     async def get(self, short):
         db = self.settings['db']
+        events = MotorCollection(db, 'events',
+                                 write_concern=WriteConcern(w=0))
         short_collection = db.short_urls
+
         url_info = await short_collection.find_one({'short': short})
 
         if url_info is None:
             self.write("The short URL %s doesn't exist." % short)
             self.finish()
-        prefix = random.choice(url_info['prefixes'])
-        self.redirect(urljoin(prefix, url_info['uri']))
+            status = 404
+            prefix = ''
+            uri = ''
+
+        else:
+            prefix = random.choice(url_info['prefixes'])
+            uri = url_info['uri']
+            app_log.error('redirect to: %s', urljoin(prefix, uri))
+            self.redirect(urljoin(prefix, uri))
+            status = 200
+
+        event = {'ip': anonymise_ip(self.request.remote_ip),
+                 'user-agent': self.request.headers['user-agent'],
+                 'referer': self.request.headers.get('referer', ''),
+                 'datetime': datetime.now(),
+                 'prefix': prefix,
+                 'uri': uri,
+                 'short': short,
+                 'status': status,
+                 }
+
+        x = await events.insert_one(event)
 
 
-class ListAPIHandler(RequestHandler):
+class BaseAPIHandler(RequestHandler):
+    def get_json_body(self):
+        """Return the body of the request as JSON data."""
+        if not self.request.body:
+            return None
+        body = self.request.body.strip().decode('utf-8')
+        try:
+            model = json.loads(body)
+        except Exception:
+            app_log.debug("Bad JSON: %r", body)
+            app_log.error("Couldn't parse JSON", exc_info=True)
+            raise HTTPError(400, 'Invalid JSON in body of request')
+        return model
+
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.set_header('Access-Control-Allow-Headers', 'accept, content-type, x-requested-with')
+
+    def options(self):
+        self.set_status(204)
+        self.finish()
+
+
+class InfoAPIHandler(BaseAPIHandler):
+    async def get(self, short):
+        db = self.settings['db']
+        short_collection = db.short_urls
+        events = db.events
+        url_info = await short_collection.find_one({'short': short})
+
+        if url_info is None:
+            self.finish({'status_code': 404,
+                         'status_txt': 'Short URL %s does not exist' % short})
+
+        else:
+            # remove internal information
+            url_info.pop("_id")
+
+            url_info['count'] = await events.count_documents({"short": short})
+            self.finish({'status_code': 200, 'status_txt': 'OK', 'data': url_info})
+
+
+class ListAPIHandler(BaseAPIHandler):
     async def get(self):
         db = self.settings['db']
         self.write('Short URLs:<br>')
@@ -49,38 +122,44 @@ class ListAPIHandler(RequestHandler):
             self.write("%s" % c)
 
 
-class CreateAPIHandler(RequestHandler):
-    def set_default_headers(self):
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.set_header('Access-Control-Allow-Headers', 'accept, content-type, x-requested-with')
-
+class ShortenAPIHandler(BaseAPIHandler):
     async def post(self):
         db = self.settings['db']
         short_collection = db.short_urls
 
-        prefix = self.get_argument('prefix', None)
-        #if prefix is None:
-        #    raise HTTPError(422)
-        #if prefix not in self.settings['prefixes']:
-        #    raise HTTPError(422)
-        # support only mybinder.org for the moment
-        prefix = 'mybinder'
+        json_request = (self.request.headers.get("Content-Type", "")
+                        .startswith("application/json"))
+        if json_request:
+            data = self.get_json_body()
+            binder_url = uri = data.get('binderUrl', None)
+            prefix = data.get('prefix', None)
+        else:
+            binder_url = uri = self.get_argument('binderUrl', None)
+            prefix = self.get_argument('prefix', None)
 
-        uri = self.get_argument('uri', None)
-        if uri is None:
+        if prefix is None:
+            raise HTTPError(422, "Need a prefix")
+        if prefix not in self.settings['prefixes']:
             raise HTTPError(422)
+
+        if uri is None:
+            raise HTTPError(422, "Need a binderUrl")
         # check if they submitted a full URL or just a URI
         parsed = urlparse(uri)
         if parsed.netloc:
             # full URL
             uri = parsed.path
+            if parsed.query:
+                uri += "?" + parsed.query
+            if parsed.fragment:
+                uri += "#" + parsed.fragment
 
         uri = normalise_uri(uri)
+        # cut off any URI parts that belong to the prefix
+        _, uri = uri.split("/v2/", maxsplit=1)
+        uri = urljoin('/v2/', uri)
 
-        # doesn't look right
-        if not uri.startswith("/v2/"):
-            raise HTTPError(500)
+        app_log.debug("uri: %s", uri)
 
         url_key = (prefix, uri)
         url_info = await short_collection.find_one({'prefix': prefix,
@@ -107,30 +186,21 @@ class CreateAPIHandler(RequestHandler):
 
         data = {
             'short_url': "https://{}/{}".format(self.settings['domain'],
-                                                short)
+                                                short),
+            'short': short
             }
-        self.finish({'status_code': 200, 'status_txt': 'OK', 'data': data})
-
-    def options(self):
-        self.set_status(204)
-        self.finish()
-
-
-class MainHandler(RequestHandler):
-    def get(self):
-        self.render('index.html')
-
-
-class AfterHandler(RequestHandler):
-    def get(self):
-        self.render('after.html')
+        if json_request:
+            self.finish({'status_code': 200, 'status_txt': 'OK', 'data': data})
+        else:
+            self.redirect('//localhost:3000/b/{}'.format(short))
 
 
 class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
-            (r'/api/shorten/?', CreateAPIHandler),
+            (r'/api/shorten/?', ShortenAPIHandler),
             (r'/api/list/?', ListAPIHandler),
+            (r'/api/info/([a-zA-Z0-9]+)/?$', InfoAPIHandler),
             (r'/([a-zA-Z0-9]+)/?$', RedirectHandler),
             (r'/(.*)', StaticFileHandler, {'default_filename': 'index.html',
                                            'path': 'static'})

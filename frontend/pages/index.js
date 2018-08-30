@@ -2,138 +2,171 @@ import React from "react";
 
 import fetch from "isomorphic-unfetch";
 import URL from "url-parse";
+import normalizeUrl from "normalize-url";
 
 import Link from "next/link";
-import Head from "next/head";
+import { withRouter } from 'next/router';
+import Layout from "../components/layout";
+
+const BACKEND = "http://localhost:8000"
 
 
 class Home extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      test: false,
-      prefix: 'https://mybinder.org/v2/',
-      uri: '',
-      usersUrl: ''
+      serverSide: true,
+      prefixes: {
+        mybinder: 'https://mybinder.org',
+        gesis: 'https://notebooks.gesis.org/binder'
+      },
+      prefixName: '',
+      binderUrl: '',
+      invalidUrl: true,
+      validated: false,
+      shortUrl: ''
     };
 
-    this.handleUriChange = this.handleUriChange.bind(this);
+    this.handleUrlChange = this.handleUrlChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
 
-  handleUriChange(event) {
-    console.log('uri changed', event.target.value);
-    const prefixUrl  = new URL(this.state.prefix);
-    const prefixUri = prefixUrl.pathname;
-
-    const url = new URL(event.target.value, 'https://mybinder.org/');
-    const regex = new RegExp(`^${prefixUri}`, "g");
-    var uri = url.pathname.replace(regex, "")
-    prefixUrl.set('pathname', `${prefixUri}${uri}`);
-    prefixUrl.set('query', url.query);
-    if (url.query) {
-      uri = `${uri}${url.query}`
+  handleUrlChange(event) {
+    var userUrl = '';
+    try {
+      userUrl = normalizeUrl(event.target.value,
+                             {stripFragment: false,
+                              normalizeHttp: true,
+                              stripWWW: false});
     }
-    console.log(prefixUrl);
+    catch (err) {
+      userUrl = event.target.value;
+    }
+    //console.log('user URL', userUrl, event.target.value)
 
-    if (event.target.value === '') {
-      this.setState({uri: ''});
-    } else {
-      if (uri.startsWith('/')) {
-        this.setState({uri: uri.substring(1)});
-      } else {
-        this.setState({uri: uri});
+    // we have attempted to validate this
+    // XXX debounce me?
+    this.setState({validated: event.target.value.length > 0});
+    var invalid = true;
+    var prefix = '';
+    for (var prefixName in this.state.prefixes) {
+      if (userUrl.startsWith(this.state.prefixes[prefixName])) {
+        invalid = false;
+        prefix = prefixName;
+        break;
       }
     }
-    this.setState({usersUrl: prefixUrl});
+    this.setState(
+      {
+        invalidUrl: invalid,
+        binderUrl: event.target.value,
+        prefixName: prefix
+      }
+    );
   }
 
   handleSubmit(event) {
     event.preventDefault();
-    console.log('submitting', this.state.uri);
-  }
-
-  static async getInitialProps () {
-    console.log('getInitialProps');
-    return { stars: 42 };
+    var binderUrl = '';
+    try {
+      binderUrl = normalizeUrl(this.state.binderUrl,
+                               {stripFragment: false,
+                                normalizeHttp: true,
+                                stripWWW: false});
+    }
+    catch (err) {
+      binderUrl = this.state.binderUrl;
+    }
+    console.log('submit', binderUrl);
+    fetch(`${BACKEND}/api/shorten`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        binderUrl: binderUrl,
+        prefix: this.state.prefixName
+       })
+     }
+    )
+    .then( r => r.json() )
+    .then( data => {
+      this.props.router.push(
+        `/stats?bndr=${data.data.short}`,
+        `/b/${data.data.short}`
+      );
+    });
   }
 
   componentDidMount() {
-    console.log('componentDidMount state1', this.state);
-    this.setState({ test: true });
-    console.log('componentDidMount state2', this.state);
+    this.setState({ serverSide: false });
   }
 
   render() {
-    console.log('render state', this.state);
     return (
-      <div>
-        <Head>
-          <link
-            rel="stylesheet"
-            href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
-            integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-            crossorigin="anonymous"
-          />
-        </Head>
-        <div className="d-flex container align-content-center justify-content-center">
-          <div className="mt-md-5 col-md-8">
-            <h1>Binder Short Links</h1>
-            <form
-              id="shorty"
-              className="mt-4 mt-md-5 needs-validation was-validated"
-              noValidate
-              _lpchecked="1"
-              action="//localhost:8000/api/shorten"
-              onSubmit={this.handleSubmit}
-            >
-              <div className="form-group">
-                <label htmlFor="uri">The Binder URL to shorten</label>
-                <div className="input-group mb-3">
-                  <div className="input-group-prepend">
-                    <div className="input-group-text">
-                      { this.state.prefix }
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    id="uri"
-                    name="uri"
-                    aria-describedby="binderUrlHelp"
-                    placeholder="gh/<org>/<repo>"
-                    required
-                    value={this.state.uri}
-                    onChange={this.handleUriChange}
-                  />
-                </div>
-                <small id="binderUrlHelp" className="form-text text-muted">
-                  {!this.state.usersUrl ? "Insert your Binder‘s URL." : `Your URL is: ${this.state.usersUrl}`}
-                </small>
-              </div>
-              <button type="submit" className="btn btn-primary">
-                Create short link
-              </button>
-            </form>
-            <p className="mt-4 mt-md-5">
-              Create beautiful short links for your Binder. Enter the full
-              launch URL for your Binder and get a short link like:{" "}
-              <span className="text-monospace">https://bndr.it/xxxx</span> that
-              you can easily share with anyone.
-            </p>
-            <p>
-              Currently only links to{" "}
-              <a href="https://mybinder.org">mybinder.org</a> are accepted.
-            </p>
-            <p>
-              This service is operated by{" "}
-              <a href="//www.wildtreetech.com">Wild Tree Tech</a>.
-            </p>
+      <Layout>
+
+        <h1>Binder Short Links</h1>
+        <form
+          id="shorty"
+          className="mt-4 mt-md-5"
+          action={`${BACKEND}/api/shorten`}
+          method="POST"
+          onSubmit={this.handleSubmit}
+          noValidate={!this.state.serverSide}
+        >
+          <div className="form-group">
+            <label htmlFor="binderUrl">The Binder URL to shorten</label>
+            <input
+              type="url"
+              pattern="https?://.+"
+              required
+              className={(this.state.validated && this.state.invalidUrl) ? "form-control form-control-lg is-invalid" : "form-control form-control-lg"}
+              id="binderUrl"
+              name="binderUrl"
+              aria-describedby="binderUrlHelp"
+              placeholder="https://mybinder.org/v2/gh/<org>/<repo>"
+              value={this.state.binderUrl}
+              onChange={this.handleUrlChange}
+            />
+            <small id="binderUrlHelp" className="form-text text-muted">
+              Insert your Binder‘s URL.
+            </small>
+            <div className="invalid-feedback">
+            {
+              this.state.serverSide ?
+              "This does not appear to be a valid Binder URL." :
+              `${this.state.binderUrl} does not appear to be a valid Binder URL.`
+            }
+            </div>
           </div>
-        </div>
-      </div>
+          {
+            this.state.serverSide ?
+            <input type="hidden" value="mybinder" name="prefix" />
+            :
+            ""
+          }
+          <button type="submit" className="btn btn-primary">
+            Create short link
+          </button>
+        </form>
+        <p className="mt-4 mt-md-5">
+          Create beautiful short links for your Binder. Enter the full
+          launch URL for your Binder and get a short link like:{" "}
+          <span className="text-monospace">https://bndr.it/25t52</span> that
+          you can easily share with others.
+        </p>
+        <p>
+          Currently only links to{" "}
+          <a href="https://mybinder.org">mybinder.org</a> are accepted.
+        </p>
+        <p>
+          This service is operated by{" "}
+          <a href="https://www.wildtreetech.com">Wild Tree Tech</a>.
+        </p>
+      </Layout>
     );
   }
 }
 
-export default Home;
+export default withRouter(Home);
