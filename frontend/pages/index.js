@@ -173,6 +173,10 @@ class Home extends React.Component {
           <a href="https://notebooks.gesis.org/binder/">GESIS</a> are accepted.
         </p>
         <p>
+          Customise your <Link href="/settings" as="/b/settings" prefetch>
+          <a>bndr.it settings</a></Link>.
+        </p>
+        <p>
           <small className="text-muted">
             This service is operated by{" "}
             <a href="https://www.wildtreetech.com">Wild Tree Tech</a>.
