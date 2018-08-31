@@ -37,7 +37,7 @@ define("port", default="8000", help="Server port", type=int)
 REDIRECT_TEMPLATE ="""
 <html>
     <head>
-        <meta http-equiv="refresh" content="300000000;url={preferred_binder}" />
+        <meta http-equiv="refresh" content="3;url={preferred_binder}" />
         <link
           rel="stylesheet"
           href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
