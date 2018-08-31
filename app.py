@@ -70,7 +70,7 @@ REDIRECT_TEMPLATE ="""
                 <p>
                   <a href="{original_binder}">{original_binder}</a>.
                 </p>
-                <p class="mt-md-5">
+                <p class="mt-4 mt-md-5">
                   <small class="text-muted">
                   <a href="/b/settings">Click here to change your preferred BinderHub.</a>
                   </small>
@@ -105,8 +105,8 @@ class RedirectHandler(RequestHandler):
 
             original_binder = urljoin(prefix, uri)
 
-            preferred_prefix = self.get_cookie('binderUrl')
-            if preferred_prefix is not None:
+            preferred_prefix = self.get_cookie('binderUrl', '')
+            if preferred_prefix:
                 if not preferred_prefix.endswith('/'):
                     preferred_prefix += '/'
                 preferred_binder = urljoin(preferred_prefix, uri)
@@ -116,8 +116,7 @@ class RedirectHandler(RequestHandler):
                     )
                 )
             else:
-                app_log.error('redirect to: %s ', )
-                self.redirect()
+                self.redirect(original_binder)
 
             status = 200
 
@@ -126,6 +125,7 @@ class RedirectHandler(RequestHandler):
                  'referer': self.request.headers.get('referer', ''),
                  'datetime': datetime.now(UTC),
                  'prefix': prefix,
+                 'preferred_prefix': preferred_prefix,
                  'uri': uri,
                  'short': short,
                  'status': status,
