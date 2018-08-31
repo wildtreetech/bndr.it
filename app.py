@@ -34,6 +34,53 @@ define("domain", type=str, default="https://bndr.it",
 define("port", default="8000", help="Server port", type=int)
 
 
+REDIRECT_TEMPLATE ="""
+<html>
+    <head>
+        <meta http-equiv="refresh" content="300000000;url={preferred_binder}" />
+        <link
+          rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+          crossOrigin="anonymous"
+        />
+        <style>
+        a {{
+           color: #337ab7;
+         }}
+         a:hover {{
+           color: #23527c;
+         }}
+         </style>
+    </head>
+    <body>
+        <div class="d-flex container align-content-center justify-content-center">
+            <div class="mt-md-5 col-md-8">
+                <h1>Redirecting</h1>
+                <p class="mt-4 mt-md-5">
+                  You have a preferred BinderHub set, in 3 seconds you will be
+                  redirected to:
+                </p>
+                <p>
+                  <a href="{preferred_binder}">{preferred_binder}</a>.
+                </p>
+                <p  class="mt-md-5">
+                  The original short link pointed to:
+                </p>
+                <p>
+                  <a href="{original_binder}">{original_binder}</a>.
+                </p>
+                <p class="mt-md-5">
+                  <small class="text-muted">
+                  <a href="/b/settings">Click here to change your preferred BinderHub.</a>
+                  </small>
+                </p>
+            </div>
+        </div>
+    </body>
+</html>
+"""
+
 class RedirectHandler(RequestHandler):
     async def get(self, short):
         db = self.settings['db']
@@ -55,8 +102,23 @@ class RedirectHandler(RequestHandler):
             uri = url_info['uri']
             if uri.startswith('/'):
                 uri = uri[1:]
-            app_log.error('redirect to: %s ', urljoin(prefix, uri))
-            self.redirect(urljoin(prefix, uri))
+
+            original_binder = urljoin(prefix, uri)
+
+            preferred_prefix = self.get_cookie('binderUrl')
+            if preferred_prefix is not None:
+                if not preferred_prefix.endswith('/'):
+                    preferred_prefix += '/'
+                preferred_binder = urljoin(preferred_prefix, uri)
+                self.finish(REDIRECT_TEMPLATE.format(
+                    preferred_binder=preferred_binder,
+                    original_binder=original_binder
+                    )
+                )
+            else:
+                app_log.error('redirect to: %s ', )
+                self.redirect()
+
             status = 200
 
         event = {'ip': anonymise_ip(self.request.remote_ip),
