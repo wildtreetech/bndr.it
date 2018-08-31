@@ -9,11 +9,6 @@ app.prepare()
 .then(() => {
   const server = express()
 
-  server.get('/b/settings', (req, res) => {
-    const actualPage = '/settings'
-    app.render(req, res, actualPage)
-  })
-
   server.get('/b/:bndr', (req, res) => {
     const actualPage = '/stats'
     const queryParams = { bndr: req.params.bndr }
