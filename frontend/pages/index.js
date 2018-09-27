@@ -20,6 +20,7 @@ class Home extends React.Component {
       prefixes: {
         mybinder: 'https://mybinder.org',
         gesis: 'https://notebooks.gesis.org/binder'
+        pangeo: 'http://binder.pangeo.io'
       },
       prefixName: '',
       binderUrl: '',
@@ -169,8 +170,9 @@ class Home extends React.Component {
         </p>
         <p>
           Currently only links to{" "}
-          <a href="https://mybinder.org">mybinder.org</a> and{' '}
-          <a href="https://notebooks.gesis.org/binder/">GESIS</a> are accepted.
+          <a href="https://mybinder.org">mybinder.org</a>, 
+          <a href="https://notebooks.gesis.org/binder/">GESIS</a> and{' '}
+          <a href="http://binder.pangeo.io">GESIS</a> are accepted.
         </p>
         <p>
           Customise your <Link href="/settings" as="/b/settings" prefetch>
