@@ -172,7 +172,7 @@ class Home extends React.Component {
           Currently only links to{" "}
           <a href="https://mybinder.org">mybinder.org</a>, 
           <a href="https://notebooks.gesis.org/binder/">GESIS</a> and{' '}
-          <a href="http://binder.pangeo.io">Pangeo</a> are accepted.
+          <a href="https://binder.pangeo.io">Pangeo</a> are accepted.
         </p>
         <p>
           Customise your <Link href="/settings" as="/b/settings" prefetch>
