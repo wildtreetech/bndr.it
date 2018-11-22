@@ -283,7 +283,7 @@ class Application(tornado.web.Application):
             db=db,
             prefixes={'mybinder': ['https://mybinder.org/'],
                       'gesis': ['https://notebooks.gesis.org/binder/'],
-                      'pangeo': ['http://binder.pangeo.io'],
+                      'pangeo': ['https://binder.pangeo.io'],
                       'auto': ['http://binder.pangeo.io',
                                'https://notebooks.gesis.org/binder/',
                                'https://mybinder.org/'],
