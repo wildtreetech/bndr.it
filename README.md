@@ -27,3 +27,10 @@ do something else that helps the project along.
 
 The app is currently deployed on a VM and uses nginx as a reverse proxy.
 Unfortunately deploying is a manual process right now ☹️.
+
+* connect to the VM with ssh
+* update the checkout of this repository on the bndr.it host
+* activate bndrit env: `source activate bndrit`
+* rebuild the frontend: `cd frontned && npm run build`
+* restart the systemd services: `sudo systemctl restart bndr-it-frontend.service` and `sudo systemctl restart bndr-it.service`
+* check https://bndr.it` changed and still works
