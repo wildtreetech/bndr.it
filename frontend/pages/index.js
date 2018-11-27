@@ -19,7 +19,7 @@ class Home extends React.Component {
       serverSide: true,
       prefixes: {
         mybinder: 'https://mybinder.org',
-        gesis: 'https://notebooks.gesis.org/binder'
+        gesis: 'https://notebooks.gesis.org/binder',
         pangeo: 'https://binder.pangeo.io'
       },
       prefixName: '',
